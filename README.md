@@ -5,6 +5,6 @@
   - Stats (e.g., handling, range, magazine size)
   - Perk availability (e.g., Quickdraw, Rampage)
   
-  All data is pulled from Destiny's API - thanks Bungie!
+  All data is pulled from Destiny's API via the great work by [altbdoor](https://altbdoor.github.io/d2-api-human/)!
   
   This README will be updated as new features become available! Stay tuned!
