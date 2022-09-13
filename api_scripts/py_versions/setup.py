@@ -7,7 +7,7 @@ import requests
 
 # Create data folder
 #os.mkdir('source/')
-#os.chdir('source/')
+os.chdir('source/')
 
 baseurl = 'https://www.bungie.net'
 
@@ -79,3 +79,58 @@ for key, val in weaponData.items():
 
 with open('weapons.json', 'w') as weapon_file:
     json.dump(remappedWeapons, weapon_file, indent=4)
+
+# Write out Sockets file
+sockets = []
+for key, val in weaponData.items():
+    if val['redacted']:
+        continue
+    if (59 in val['itemCategoryHashes']
+       and val['itemTypeDisplayName'] != 'Weapon Mod'
+       and val['itemTypeDisplayName'] != ''
+       and val['displayProperties']['name'] != ''):
+        sockets.append(val)
+
+remappedSockets = {}
+for socket in sockets:
+    socketStats = {}
+    if socket['investmentStats']:
+        for val in socket['investmentStats']:
+            if val['value'] != 0:
+                try:
+                    remappedStats[val['statTypeHash']]
+                except KeyError:
+                    continue
+                socketStats[remappedStats[val['statTypeHash']]] = val['value']
+    try: # Try to catch broken icon links
+        icon = socket['displayProperties']['icon']
+    except KeyError:
+        icon = 'null'
+    remappedSockets[socket['hash']] = {
+        'id' : socket['hash'],
+        'name' : socket['displayProperties']['name'],
+        'description' : socket['displayProperties']['description'],
+        'icon' : icon,
+        'stats' : socketStats}
+
+with open('sockets.json', 'w') as socket_file:
+    json.dump(remappedSockets, socket_file, indent=4)
+
+# Write out plugsets file
+plugset_url = manifest['jsonWorldComponentContentPaths']['en']['DestinyPlugSetDefinition']
+plugset_header = {'Accept-Encoding' : 'gzip'}
+plugset_response = requests.get(f'{baseurl}{plugset_url}', headers=plugset_header)
+plugsetData = plugset_response.json()
+
+remappedPlugsets = {}
+for key, val in plugsetData.items():
+    reusablePlugItems = []
+    for plug in val['reusablePlugItems']:
+        if plug['currentlyCanRoll']:
+            reusablePlugItems.append(plug['plugItemHash'])
+        remappedPlugsets[val['hash']] = reusablePlugItems
+
+with open('plugsets.json', 'w') as plugset_file:
+    json.dump(remappedPlugsets, plugset_file, indent=4)
+
+os.chdir('../')
