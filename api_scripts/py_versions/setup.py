@@ -71,14 +71,14 @@ weapon_header = {'Accept-Encoding' : 'gzip'}
 weapon_response = requests.get(f'{baseurl}{weapon_url}', headers=weapon_header)
 weaponData = weapon_response.json()
 
-remappedWeapons = {}
+remappedWeapons = []
 for key, val in weaponData.items():
     if 'itemCategoryHashes' in val.keys():
         if 1 in val['itemCategoryHashes'] and 3109687656 not in val['itemCategoryHashes']:
-            remappedWeapons[key] = val
+            remappedWeapons.append(val)
 
 with open('weapons.json', 'w') as weapon_file:
-    json.dump(remappedWeapons, weapon_file, indent=4)
+    json.dump(list(remappedWeapons), weapon_file, indent=4)
 
 # Write out Sockets file
 sockets = []
@@ -94,7 +94,7 @@ for key, val in weaponData.items():
 remappedSockets = {}
 for socket in sockets:
     socketStats = {}
-    if socket['investmentStats']:
+    if socket['investmentStats'] != 'null':
         for val in socket['investmentStats']:
             if val['value'] != 0:
                 try:
