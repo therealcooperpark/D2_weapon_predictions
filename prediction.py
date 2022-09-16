@@ -35,9 +35,8 @@ df = df.drop(columns=['id', 'name', 'icon', 'watermark', 'screenshot',
                       'frame.name', 'frame.description', 'frame.icon',
                       'ammo_type', 'element_class'])
 
-# 5) Process NaN values
-### TO DO
-
+# 5) Replace NaN values with -1 to separate from real values
+df.fillna(-1, inplace=True)
 
 ###################
 # Build the model #
@@ -48,7 +47,7 @@ X = df.drop(columns=['weapon_type'])
 y = df['weapon_type']
 
 # Create train/test datasets
-X_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 # Build the model
 model = DecisionTreeClassifier()
@@ -60,3 +59,10 @@ predictions = model.predict(X_test)
 # Measure accuracy
 accuracy = accuracy_score(y_test, predictions)
 print('Accuracy: {0}'.format(accuracy))
+
+# Visualize Decision Tree
+class_names = y.unique()
+class_names.sort()
+feature_names = list(X.columns)
+tree.export_graphviz(model, out_file='decision_tree.dot', feature_names=feature_names,
+                    class_names=class_names, label='all', rounded=True, filled=True)
