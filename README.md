@@ -20,6 +20,7 @@
   - Add perk pools to predictions to see if that alters prediction reliability
   - Try to predict weapon rarity given stats (or anything else)
     - Can combine any of the other future goals with this one too
+  - Add model saving and customization options
 
   ## Completed Updates
 
