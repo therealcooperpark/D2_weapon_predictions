@@ -7,7 +7,7 @@
   - Stats only
   - Stats + Ammo type
 
-  These models will be tested against the weapon type and the weapon type + frame type (8 predictions)
+  These models will be tested against the weapon type and the weapon type + frame type (4 predictions)
 
   All data is pulled from Destiny's API via the great work by [altbdoor](https://altbdoor.github.io/d2-api-human/)!
   
