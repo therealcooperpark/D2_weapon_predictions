@@ -1,33 +1,75 @@
-import joblib
+#import joblib
+
+# Import file/data management
 import json
+import numpy as np
 import pandas as pd
+
+# Import models
+from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn import tree
+from sklearn.ensemble import (
+    AdaBoostClassifier,
+    GradientBoostingClassifier,
+    RandomForestClassifier,
+    BaggingClassifier)
+from sklearn.tree import DecisionTreeClassifier
 
-def build_decisiontree_model(dataset, target_col):
-    # Build a Decision Tree model given data and target column
+# Import stats
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score, make_scorer
 
+# Hide some warnings
+import warnings
+warnings.filterwarnings('ignore')
+
+
+def model_performance_classification(model, y_test, target):
+    '''
+    Test classification scores for a given model
+    '''
+
+    # Run a prediction
+    predictions = model.predict(y_test)
+
+    # Calculate performance metrics
+    accuracy  = accuracy_score(target, predictions)
+    recall    = recall_score(target, predictions)
+    precision = precision_score(target, predictions)
+    f1        = f1_score(target, predictions)
+
+    return pd.DataFrame({
+            'accuracy'  : accuracy,
+            'recall'    : recall,
+            'precision' : precision,
+            'f1'        : f1})
+
+
+def build_confusion_matrix(model, X_test, target):
+    '''
+    Build a confusion matrix to understand classifications
+    '''
+
+    y_pred = model.predict(X_test)
+    cm     = confusion_matrix(y_pred, target)
+    scores = np.asarray(
+             ['{0:0.0f}'.format(item) + '\n{0:.2%}'.format(item/cm.flatten().sum())
+             for item in cm.flatten()]).reshape(2,2)
+    print(scores)
+    return None
+
+
+def split_dataset(dataset, target_col, test_size=0.2):
+    '''
+    Make dataset, build test using test_ratio
+    '''
     # Organize data
     X = dataset.drop(columns=[target_col])
     y = dataset[target_col]
 
     # Create train/test datasets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-    # Build the model
-    model = DecisionTreeClassifier()
-    model.fit(X_train, y_train)
-
-    # Test predictions
-    predictions = model.predict(X_test)
-
-    # Test accuracy
-    accuracy = accuracy_score(y_test, predictions)
-
-    return model, accuracy
-
+    return train_test_split(X, y, test_size=test_size, stratify=y)
+   
 
 def visualize_decisiontree(model, df, target_col, outfile):
     # Write out visualize tree model given data and target column
@@ -36,16 +78,17 @@ def visualize_decisiontree(model, df, target_col, outfile):
     feature_names = list(df.drop(columns=[target_col]).columns)
     tree.export_graphviz(model, out_file=outfile, feature_names=feature_names,
                          class_names=class_names, label='all', rounded=True, filled=True)
-    
+
+
+
+#####################
+# Clean up the data #
+#####################
 
 # Read database
 with open('data/weapons/all.json', 'r') as json_file:
     js = json.load(json_file)
 df = pd.json_normalize(js)
-
-#####################
-# Clean up the data #
-#####################
 
 # 1) Remove sunset gear
 # (Assumes weapon type rules were adhered to better after sunsetting)
@@ -71,18 +114,47 @@ df = df.drop(columns=['id', 'name', 'icon', 'watermark', 'screenshot',
 # 5) Replace NaN values with -1 to separate from real values
 df.fillna(-1, inplace=True)
 
-########################
-# Build original model #
-########################
 
-# Build the model
-std_df = df.drop(columns=['perks', 'frame.name'])
-std_model, std_accuracy = build_decisiontree_model(std_df, 'weapon_type')
-print(f'Standard model accuracy: {std_accuracy}')
+##############################
+#  Build models and datasets #
+##############################
 
-# Visualize Decision Tree
-visualize_decisiontree(std_model, std_df, 'weapon_type', 'std_decision_tree.dot')
+# Dataset with no perks or frame
+std_df = df.drop(columns=['frame.name', 'perks'])
+X_train, X_test, y_train, y_test = split_dataset(std_df, 'weapon_type')
 
+
+# Models
+models = [('decision_tree', DecisionTreeClassifier(random_state=1)),
+          ('log_regression', LogisticRegression(random_state=1)),
+          ('bagging', BaggingClassifier(random_state=1)),
+          ('random_forest', RandomForestClassifier(random_state=1)),
+          ('gbm', GradientBoostingClassifier(random_state=1)),
+          ('adaboost', AdaBoostClassifier(random_state=1))]
+
+###################
+# Validate models #
+###################
+
+# Define scorer to optimize models for precision
+# I want as many correct hits as possible, then investigate anything else individually
+scorer = make_scorer(precision_score, average='macro')
+
+# Cross-validate and validate with data
+print('Model\tCV_score\tV_score')
+for name, model in models:
+    # Cross-validate
+    cv_result = cross_val_score(estimator=model, X=X_train, y=y_train, scoring=scorer, cv=5, error_score='raise')
+    
+    # Fit and validate
+    model.fit(X_train, y_train)
+    recall = precision_score(y_test, model.predict(X_test), average='macro')
+    print(f'{name}\t{cv_result.mean()}\t{recall}')
+
+# TO DO: Visualize comparisons
+
+# TO DO: Repeat with alternative datasets
+'''
 #############################
 # Build model w/o ammo type #
 #############################
@@ -95,31 +167,6 @@ print(f'No ammo model accuracy: {noammo_accuracy}')
 # Visualize Decision Tree
 visualize_decisiontree(noammo_model, df_noammo, 'weapon_type', 'noammo_decision_tree.dot')
 
-
-################################
-# Build model w/o element type #
-################################
-
-# Build the model
-df_noelement = std_df.drop(columns=element_cols)
-noelement_model, noelement_accuracy = build_decisiontree_model(df_noelement, 'weapon_type')
-print(f'No element model accuracy: {noelement_accuracy}')
-
-# Visualize Decision Tree
-visualize_decisiontree(noelement_model, df_noelement, 'weapon_type', 'noelement_decision_tree.dot')
-
-
-###################################
-# Build model w/o element or ammo #
-###################################
-
-# Build the model
-df_noele_noammo = std_df.drop(columns=element_cols+ammo_cols)
-noele_noammo_model, noele_noammo_accuracy = build_decisiontree_model(df_noele_noammo, 'weapon_type')
-print(f'No element and no ammo model accuracy: {noele_noammo_accuracy}')
-
-# Visualize Decision Tree
-visualize_decisiontree(noele_noammo_model, df_noele_noammo, 'weapon_type', 'noele_noammo_decision_tree.dot')
 
 print('------------------------------\nWeapon+Frame models\n-----------------------------')
 ###################################
@@ -148,27 +195,4 @@ print(f'No ammo model predicting weapon and frame: {frame_noammo_accuracy}')
 
 # Visualize Decision Tree
 visualize_decisiontree(frame_noammo_model, df_frame_noammo, 'weapon_frame', 'noammo_frame_decision_tree.dot')
-
-###################################
-#  weapon+frame no element type   #
-###################################
-
-# Build the model
-df_frame_noele = df_frame.drop(columns=element_cols)
-frame_noele_model, frame_noele_accuracy = build_decisiontree_model(df_frame_noele, 'weapon_frame')
-print(f'No element model predicting weapon and frame: {frame_noele_accuracy}')
-
-# Visualize Decision Tree
-visualize_decisiontree(frame_noele_model, df_frame_noele, 'weapon_frame', 'noele_frame_decision_tree.dot')
-
-##################################
-#   weapon+frame no ele no ammo  #
-##################################
-
-# Build the model
-df_frame_noele_noammo = df_frame.drop(columns=element_cols+ammo_cols)
-frame_noele_noammo_model, frame_noele_noammo_accuracy = build_decisiontree_model(df_frame_noele_noammo, 'weapon_frame')
-print(f'No element no ammo model predicting weapon and frame: {frame_noele_noammo_accuracy}')
-
-# Visualize Decision Tree
-visualize_decisiontree(frame_noele_noammo_model, df_frame_noele_noammo, 'weapon_frame', 'noele_noammo_frame_decision_tree.dot')
+'''
