@@ -2,14 +2,12 @@
   
   This is my attempt at building a Machine Learning model to accurately predict the archetype of a weapon from Destiny 2 given its characteristics.
 
-  There are 4 models currently being tested including:
+  There are 2 models currently being tested, including:
 
   - Stats only
-  - Stats + Element type
   - Stats + Ammo type
-  - Stats + Ammo type + Element type
 
-  These models are tested against the weapon type and the weapon type + frame type (8 predictions)
+  These models will be tested against the weapon type and the weapon type + frame type (8 predictions)
 
   All data is pulled from Destiny's API via the great work by [altbdoor](https://altbdoor.github.io/d2-api-human/)!
   
@@ -27,8 +25,14 @@
 
   ## Completed Updates
 
+  ### 9/20/2022
+
+  - Overhaul of code base including:
+    - Refactor of dataset and model building
+    - Can build and test multiple models
+    - Basic statistics comparison with cross-validation and validation based on precision
+
   ### 9/18/2022
 
-  - Increase difficulty of prediction by removing certain columns (ammo type and/or element type)
-    - Note: Element type was a curiosity, it was not expected to affect model performance
+  - Increase difficulty of prediction by removing ammo type
   - Use models to predict weapon type + frame
