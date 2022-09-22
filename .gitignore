@@ -2,3 +2,5 @@ api_scripts/source/
 data/
 *.dot
 *.swp
+*.png
+*.tsv

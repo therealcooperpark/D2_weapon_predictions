@@ -5,6 +5,10 @@ import json
 import numpy as np
 import pandas as pd
 
+# Visualization
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 # Import models
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
@@ -17,46 +21,74 @@ from sklearn.tree import DecisionTreeClassifier
 
 # Import stats
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score, make_scorer
+from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score, make_scorer, confusion_matrix, plot_confusion_matrix
 
 # Hide some warnings
 import warnings
 warnings.filterwarnings('ignore')
 
 
-def model_performance_classification(model, y_test, target):
+def model_performance_classification(model, name, X_test, target):
     '''
     Test classification scores for a given model
     '''
 
     # Run a prediction
-    predictions = model.predict(y_test)
+    predictions = model.predict(X_test)
 
     # Calculate performance metrics
     accuracy  = accuracy_score(target, predictions)
-    recall    = recall_score(target, predictions)
-    precision = precision_score(target, predictions)
-    f1        = f1_score(target, predictions)
+    recall    = recall_score(target, predictions, average='macro')
+    precision = precision_score(target, predictions, average='macro')
+    f1        = f1_score(target, predictions, average='macro')
 
+    print(accuracy, recall, precision, f1)
     return pd.DataFrame({
-            'accuracy'  : accuracy,
-            'recall'    : recall,
-            'precision' : precision,
-            'f1'        : f1})
+            'accuracy'  : [accuracy],
+            'recall'    : [recall],
+            'precision' : [precision],
+            'f1'        : [f1]})
 
 
-def build_confusion_matrix(model, X_test, target):
+def build_confusion_matrix(model, name, X_test, target):
     '''
     Build a confusion matrix to understand classifications
     '''
 
+    # Build matrix
     y_pred = model.predict(X_test)
     cm     = confusion_matrix(y_pred, target)
-    scores = np.asarray(
-             ['{0:0.0f}'.format(item) + '\n{0:.2%}'.format(item/cm.flatten().sum())
-             for item in cm.flatten()]).reshape(2,2)
-    print(scores)
-    return None
+
+    # Calculate confusion matrix values for 2x2
+    false_pos = cm.sum(axis=0) - np.diag(cm)
+    false_neg = cm.sum(axis=1) - np.diag(cm)
+    true_pos  = np.diag(cm)
+    true_neg  = cm.sum() - (false_pos + false_neg + true_pos)
+
+    TPR = true_pos / (true_pos+false_neg) # Sensitivity / true positive rate
+    TNR = true_neg / (true_neg+false_neg) # Specificity / true negative rate
+    FPR = false_neg / (false_pos+true_neg) # Fall out / False positive rate
+    FNR = false_neg / (true_pos+false_neg) # False negative rate
+
+    print(TPR.sum(), FNR.sum(), FPR.sum(), TNR.sum())
+
+    total    = TPR.sum() + FNR.sum() + FPR.sum() + TNR.sum()
+    percents = [round((TPR.sum()/total)*100, 2), 
+                round((FNR.sum()/total)*100, 2),
+                round((FPR.sum()/total)*100, 2),
+                round((TNR.sum()/total)*100, 2)]
+    sums     = [TPR.sum(), FNR.sum(), FPR.sum(), TNR.sum()]
+    labels   = np.asarray([f'{sums[0]}\n{percents[0]}%',
+                f'{sums[1]}\n{percents[1]}%',
+                f'{sums[2]}\n{percents[2]}%',
+                f'{sums[3]}\n{percents[3]}%']).reshape(2,2)
+
+
+    plt.figure(figsize=(6,4))
+    sns.heatmap(np.asarray(sums).reshape(2,2), annot=labels, fmt='')
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig(f'{name}_confusion_matrix.png')
 
 
 def split_dataset(dataset, target_col, test_size=0.2):
@@ -141,17 +173,38 @@ models = [('decision_tree', DecisionTreeClassifier(random_state=1)),
 scorer = make_scorer(precision_score, average='macro')
 
 # Cross-validate and validate with data
+cv_results = []
+model_names = []
+results= pd.DataFrame({'Name': [],
+                          'Accuracy': [],
+                          'Recall': [],
+                          'Precision': [],
+                          'F1': []})
 print('Model\tCV_score\tV_score')
 for name, model in models:
     # Cross-validate
     cv_result = cross_val_score(estimator=model, X=X_train, y=y_train, scoring=scorer, cv=5, error_score='raise')
+    model_names.append(name)
+    cv_results.append(cv_result)
     
     # Fit and validate
     model.fit(X_train, y_train)
-    recall = precision_score(y_test, model.predict(X_test), average='macro')
-    print(f'{name}\t{cv_result.mean()}\t{recall}')
+    perf_vals = model_performance_classification(model, name, X_test, y_test)
+    results = pd.concat([results, perf_vals])
 
-# TO DO: Visualize comparisons
+    # Build Confusion Matrix
+    #build_confusion_matrix(model, name, X_test, y_test)
+
+# Output results table
+results.to_csv('performance_results.tsv', sep='\t')
+
+# Visualize cross-validation
+fig = plt.figure(figsize=(10,7))
+fig.suptitle('Algorithm Comparison')
+ax = fig.add_subplot(111)
+plt.boxplot(cv_results)
+ax.set_xticklabels(model_names)
+plt.savefig('cross-val.png')
 
 # TO DO: Repeat with alternative datasets
 '''
