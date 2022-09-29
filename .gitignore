@@ -4,3 +4,4 @@ data/
 *.swp
 *.png
 *.tsv
+.ipynb_checkpoints/
