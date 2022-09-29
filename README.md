@@ -23,6 +23,10 @@
   - Add model saving and customization options
 
   ## Completed Updates
+  
+  ### 9/21/2022
+  - Included additional reported statistics in the form of a confusion matrix for each model (still tweaking for consistency)
+  - Added boxplot comparing cross-validation values across all tested models
 
   ### 9/20/2022
 
