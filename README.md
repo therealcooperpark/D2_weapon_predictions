@@ -27,7 +27,8 @@ These models are trained to predict the weapon archetype (e.g., Shotgun, Hand Ca
   - Train models to predict weapon archetype & frame together
   - Train models to predict weapon rarity
   - Add Hyperparameter tuning
-  - Add model saving and customization options
+  - Add model saving
+  - Add cell to provide your own test data
   - ~~Add additional prediction algorithms~~ **Complete as of 9/20/22**
   - ~~Add additional reported statistics~~ **Complete as of 9/28/22**
   
