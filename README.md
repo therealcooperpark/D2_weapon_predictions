@@ -1,6 +1,6 @@
   # D2 Weapon Predictions
   
-  This is my attempt at building a Machine Learning model to accurately predict the archetype of a Legendary (purple) weapon from Destiny 2 given its characteristics. Characteristics include:
+  This is my attempt at building a Machine Learning model to accurately predict the archetype of a Legendary (purple) weapon from Destiny 2 given its characteristics. **All current modeling is done in `predictions.ipynb`** Characteristics include:
   
   - All weapon stats (e.g., Handling, Range, Aim Assistance, etc.)
   - Ammo type (e.g., Primary, Special, Heavy)
